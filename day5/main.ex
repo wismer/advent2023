@@ -11,10 +11,18 @@ defmodule Advent do
   def parse(file \\ "./data/day5.txt") do
     case File.read(file) do
       {:ok, data} ->
-        String.split(data, "\n\n", trim: true)
+        data = String.split(data, "\n\n", trim: true)
           |> Enum.map(&break_up_sections/1)
-          |> Enum.reduce(%{}, &into_map/2)
-          |>
+          |> Enum.reduce([], &into_map/2)
+          |> Enum.reverse()
+        [seeds | categories] = data
+        seeds[:maps]
+          |> Enum.map(fn seed -> get_seed_location(categories, seed) end)
+          |> List.to_tuple()
+        #   |> case Enum.find(fn [{range, _}] -> start in range end) do
+          #   {_, delta} -> start - delta
+          #   nil -> start
+          # end
           # |> construct_ranges()
           # |> break_into_categories()
           # |> parse_integers()
@@ -22,12 +30,21 @@ defmodule Advent do
     end
   end
 
-  defp solve_part_one(p) do
-    seeds = Map.get(p, "seeds")
-
+  defp get_seed_location([category | categories], seed_location) do
+    IO.inspect(category[:label])
+    location = process_maps_for_category(Enum.reverse(category[:maps]), seed_location)
+    get_seed_location(categories, location)
   end
+  defp get_seed_location([], seed_location), do: seed_location
 
-  defp map_seed([seed | seeds], p, )
+  defp process_maps_for_category([map | maps], location) do
+    if location in map[:src] do
+      process_maps_for_category(maps, location - (map[:s] - map[:d]))
+    else
+      process_maps_for_category(maps, location)
+    end
+  end
+  defp process_maps_for_category([], location), do: location
 
   defp break_up_sections(unparsed_section) do
     [[p] | r] = Regex.scan(~r/(^[a-z\-]+|\d+)/, unparsed_section, capture: :all_but_first)
@@ -43,49 +60,20 @@ defmodule Advent do
         |> Enum.chunk_every(3)
         |> map_range([])
     end
-    acc = Map.update(acc, label, default, fn x -> x end)
-    acc
+
+    [[label: label, maps: default] | acc]
   end
 
-  # defp construct_ranges(p) do
-  #   for {k, v} <- p, k != "seeds", do: map_range(v, k)
-  # end
-
   defp map_range([[d, s, r] | ranges], rng) do
-    dest = d..(d + r - 1)
-    src = s..(s + r - 1)
+    dest = d..(d + r)
+    src = s..(s + r)
     map_range(ranges, [[
+      d: d,
+      s: s,
+      rng: r,
       dest: dest,
-      src: src,
-      overlap: calc_overlap(d, s, r),
-      rng: r
+      src: src
     ] | rng])
   end
   defp map_range([], rng), do: rng
-
-  defp calc_overlap(destination, source, rng) do
-    if destination + rng - 1 < source or source + rng - 1 < destination do
-      -2..-1
-    else
-      max(destination, source)..(min(destination + rng, source + rng))
-    end
-  end
-
-  # defp break_into_categories([category | categories], label) do
-
-  # end
-
-  # defp to_int(str) do
-  #   String.split(str, ~r/\n|\s/, trim: true) |> Enum.map(&String.to_integer/1)
-  # end
-
-  # defp strip_label(parts, categories \\ [])
-  # defp set_label([label | parts], []) do
-  #   Regex.scan(~r/(seeds\:) ([\d\s]+)/, part)
-  #   String.split(parts, ~r/(\:\n)|\n/, trim: true)
-  # end
-
-  # defp parse_numbers(chunk) do
-  #   String.split(chunk, ~r/\s/, trim: true) |> Enum.map(&String.to_integer/1)
-  # end
 end
